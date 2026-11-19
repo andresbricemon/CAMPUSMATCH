@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cada estudiante solo puede leer y escribir SU propio perfil,
+    // y solo si inició sesión con una cuenta verificada @unimilitar.edu.co.
+    function isUmng() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@unimilitar[.]edu[.]co$');
+    }
+
+    match /users/{uid} {
+      allow read, write: if isUmng() && request.auth.uid == uid;
+    }
+
+    // Todo lo demás queda cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
