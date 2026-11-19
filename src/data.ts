@@ -3,8 +3,9 @@ import espacioBienestarPhoto from "./assets/espacio-bienestar-bloque-b.png";
 import gimnasioPhoto from "./assets/gimnasio-calle100.png";
 import plazaCervantesPhoto from "./assets/plaza-cervantes.png";
 
-export type Category = "Estudio" | "Deporte" | "Salud" | "Alimentación" | "Eventos";
-export type Noise = "Silencioso" | "Moderado" | "Activo";
+import type { CampusZone, Category, DiscoveryItem, Noise, Place, Service } from "./types";
+
+export type { Category, Noise };
 export type NeedId = "hunger" | "study" | "stress" | "social" | "internship" | "sport";
 
 export const profile = {
@@ -104,7 +105,7 @@ export const needs: { id: NeedId; label: string; helper: string; icon: string }[
   { id: "sport", label: "Deporte", helper: "Moverme y recargar energía", icon: "activity" },
 ];
 
-export const places = [
+export const places: Place[] = [
   {
     id: "biblioteca-norte",
     name: "Biblioteca General",
@@ -367,7 +368,7 @@ export const places = [
       "Áreas de estudio al aire libre, carpa de estudio y dos gradas, junto al acceso del Complejo Deportivo",
     images: ["[POR VERIFICAR]", "[POR VERIFICAR]", "[POR VERIFICAR]"],
   },
-] as const;
+];
 
 export const recommendations: Record<NeedId, string> = {
   hunger: "cafeteria-central",
@@ -378,7 +379,7 @@ export const recommendations: Record<NeedId, string> = {
   sport: "cancha-multiple",
 };
 
-export const campusZones = [
+export const campusZones: CampusZone[] = [
   {
     id: "aula-maxima",
     name: "Aula Máxima",
@@ -577,9 +578,9 @@ export const campusZones = [
     height: 22,
     shape: "polygon(0 10%, 20% 0, 48% 11%, 72% 0, 100% 15%, 97% 90%, 65% 100%, 32% 87%, 4% 100%)",
   },
-] as const;
+];
 
-export const services = [
+export const services: Service[] = [
   {
     title: "Bienestar Universitario",
     description:
@@ -675,7 +676,7 @@ export const services = [
   },
 ];
 
-export const discoverySections = [
+export const discoverySections: { id: "activities" | "clubs" | "opportunities"; title: string; items: DiscoveryItem[] }[] = [
   {
     id: "activities",
     title: "Actividades",
@@ -771,6 +772,24 @@ export const discoverySections = [
     ],
   },
 ];
+
+/**
+ * Fotos incluidas en el build. En Firestore se guardan como "asset:<nombre>" para que
+ * no dependan del hash que Vite pone en el nombre del archivo.
+ */
+export const bundledPhotos: Record<string, string> = {
+  "aula-maxima": aulaMaximaPhoto,
+  "espacio-bienestar-bloque-b": espacioBienestarPhoto,
+  gimnasio: gimnasioPhoto,
+  "plaza-cervantes": plazaCervantesPhoto,
+};
+
+export const serviceTypes = ["Bienestar", "Salud", "Académico", "Profesional", "Movilidad"];
+
+/** Todas las etiquetas que conectan intereses/objetivos del perfil con el contenido. */
+export const knownTags = Array.from(
+  new Set([...profile.interests, ...profile.goals].flatMap((item) => item.tags)),
+).sort();
 
 export const categoryMeta: Record<Category, { icon: string; short: string }> = {
   Estudio: { icon: "book", short: "E" },

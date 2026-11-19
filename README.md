@@ -24,3 +24,13 @@ Authentication → `npm run deploy`.
 - Creación de perfil en 3 pasos: programa y semestre, intereses, objetivos.
 - Perfil guardado en la nube (Firestore) y editable desde la sección Perfil.
 - Match por necesidad, Descubre con distintivo "Para ti", mapa del campus con fotos y publicaciones de Instagram.
+- **Dos perfiles al iniciar sesión**: *Estudiante* (la app de siempre) o *Administrador*, una interfaz aparte para
+  añadir, editar o eliminar lugares del mapa, servicios, actividades, clubes y oportunidades (y editar los textos y
+  fotos de las zonas del mapa).
+
+## Nombrar administradores
+Un usuario es administrador si existe el documento `admins/{correo}` en Firestore:
+Consola de Firebase → Firestore Database → Iniciar colección `admins` → ID del documento = el correo
+**en minúsculas** (ej. `nombre.apellido@unimilitar.edu.co`) → agrega cualquier campo (ej. `rol: "admin"`) → Guardar.
+Luego, en la pantalla de inicio, elige **Administrador** y entra con esa cuenta. Si una cuenta sin ese documento elige
+Administrador, se le niega el acceso. En modo demo se puede entrar con cualquiera de los dos perfiles.

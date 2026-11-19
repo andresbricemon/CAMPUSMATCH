@@ -7,23 +7,43 @@ import {
   type User,
 } from "firebase/auth";
 import App from "./App";
+import AdminApp from "./AdminApp";
 import { ALLOWED_DOMAIN, auth, firebaseEnabled, googleProvider, isAllowedEmail } from "./firebase";
 import { loadProfile, saveProfile } from "./profileStore";
+import { checkIsAdmin, loadContent, resetContentSection, saveContentSection } from "./contentStore";
 import { profile as catalog, programs, semesters } from "./data";
-import type { SessionUser, StudentProfileState } from "./types";
+import { Icon } from "./ui";
+import type { CampusContent, SessionUser, StudentProfileState } from "./types";
+
+/** Con qué perfil entra la persona: la app del estudiante o el panel de administración. */
+type Role = "student" | "admin";
 
 type Phase =
   | { kind: "loading" }
   | { kind: "signed-out"; error?: string }
-  | { kind: "onboarding"; user: SessionUser }
-  | { kind: "ready"; user: SessionUser; profile: StudentProfileState };
+  | { kind: "onboarding"; user: SessionUser; content: CampusContent }
+  | { kind: "ready"; user: SessionUser; content: CampusContent; profile: StudentProfileState }
+  | { kind: "admin"; user: SessionUser; content: CampusContent };
 
-const DEMO_USER: SessionUser = {
-  uid: "demo",
-  name: "Estudiante Demo",
-  email: `demo@${ALLOWED_DOMAIN}`,
-  photoURL: null,
+const ROLE_KEY = "campusmatch-role";
+
+const DEMO_USERS: Record<Role, SessionUser> = {
+  student: { uid: "demo", name: "Estudiante Demo", email: `demo@${ALLOWED_DOMAIN}`, photoURL: null },
+  admin: {
+    uid: "demo-admin",
+    name: "Administrador Demo",
+    email: `admin.demo@${ALLOWED_DOMAIN}`,
+    photoURL: null,
+  },
 };
+
+function storedRole(): Role {
+  try {
+    return sessionStorage.getItem(ROLE_KEY) === "admin" ? "admin" : "student";
+  } catch {
+    return "student";
+  }
+}
 
 function toSessionUser(user: User): SessionUser {
   return {
@@ -42,18 +62,36 @@ function applyStoredTheme() {
 export default function AuthGate() {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [busy, setBusy] = useState(false);
+  const [role, setRole] = useState<Role>(storedRole);
 
   useEffect(applyStoredTheme, []);
 
-  async function enter(user: SessionUser) {
+  async function enter(user: SessionUser, as: Role) {
     try {
-      const stored = await loadProfile(user);
-      setPhase(stored ? { kind: "ready", user, profile: stored } : { kind: "onboarding", user });
+      if (as === "admin") {
+        if (!(await checkIsAdmin(user))) {
+          sessionStorage.removeItem(ROLE_KEY);
+          if (firebaseEnabled && auth) await signOut(auth);
+          setPhase({
+            kind: "signed-out",
+            error: `La cuenta ${user.email} no tiene permisos de administrador. Entra como estudiante o pide a un administrador que te dé acceso.`,
+          });
+          return;
+        }
+        setPhase({ kind: "admin", user, content: await loadContent() });
+        return;
+      }
+      const [stored, content] = await Promise.all([loadProfile(user), loadContent()]);
+      setPhase(
+        stored
+          ? { kind: "ready", user, content, profile: stored }
+          : { kind: "onboarding", user, content },
+      );
     } catch (error) {
       console.error(error);
       setPhase({
         kind: "signed-out",
-        error: "No pudimos cargar tu perfil. Revisa tu conexión e intenta de nuevo.",
+        error: "No pudimos cargar tu información. Revisa tu conexión e intenta de nuevo.",
       });
     }
   }
@@ -61,7 +99,7 @@ export default function AuthGate() {
   useEffect(() => {
     if (!firebaseEnabled || !auth) {
       const demo = sessionStorage.getItem("campusmatch-demo") === "1";
-      if (demo) void enter(DEMO_USER);
+      if (demo) void enter(DEMO_USERS[storedRole()], storedRole());
       else setPhase({ kind: "signed-out" });
       return;
     }
@@ -80,17 +118,21 @@ export default function AuthGate() {
         });
         return;
       }
-      await enter(toSessionUser(user));
+      // El rol elegido en la pantalla de inicio se guarda antes de abrir Google
+      // para que sobreviva al inicio de sesión por redirección y a las recargas.
+      await enter(toSessionUser(user), storedRole());
     });
   }, []);
 
   async function login() {
+    sessionStorage.setItem(ROLE_KEY, role);
+    setBusy(true);
     if (!firebaseEnabled || !auth) {
       sessionStorage.setItem("campusmatch-demo", "1");
-      await enter(DEMO_USER);
+      await enter(DEMO_USERS[role], role);
+      setBusy(false);
       return;
     }
-    setBusy(true);
     try {
       await signInWithPopup(auth, googleProvider());
     } catch (error) {
@@ -110,6 +152,7 @@ export default function AuthGate() {
 
   async function logout() {
     sessionStorage.removeItem("campusmatch-demo");
+    sessionStorage.removeItem(ROLE_KEY);
     if (firebaseEnabled && auth) await signOut(auth);
     setPhase({ kind: "signed-out" });
   }
@@ -123,7 +166,15 @@ export default function AuthGate() {
   }
 
   if (phase.kind === "signed-out") {
-    return <LoginScreen onLogin={login} busy={busy} error={phase.error} />;
+    return (
+      <LoginScreen
+        onLogin={login}
+        busy={busy}
+        error={phase.error}
+        role={role}
+        onRoleChange={setRole}
+      />
+    );
   }
 
   if (phase.kind === "onboarding") {
@@ -133,24 +184,45 @@ export default function AuthGate() {
         onCancel={logout}
         onDone={async (profile) => {
           await saveProfile(phase.user, profile);
-          setPhase({ kind: "ready", user: phase.user, profile });
+          setPhase({ kind: "ready", user: phase.user, content: phase.content, profile });
         }}
       />
     );
   }
 
+  const demoBanner = !firebaseEnabled && (
+    <div className="demo-banner" role="note">
+      Modo demo: el inicio de sesión real con Google se activa al configurar Firebase (.env).
+    </div>
+  );
+
+  if (phase.kind === "admin") {
+    return (
+      <>
+        {demoBanner}
+        <AdminApp
+          user={phase.user}
+          initialContent={phase.content}
+          onContentChange={(key, items) => saveContentSection(key, items, phase.user)}
+          onContentReset={async (key) => {
+            await resetContentSection(key);
+            return loadContent();
+          }}
+          onSignOut={logout}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      {!firebaseEnabled && (
-        <div className="demo-banner" role="note">
-          Modo demo: el inicio de sesión real con Google se activa al configurar Firebase (.env).
-        </div>
-      )}
+      {demoBanner}
       <App
         user={phase.user}
         initialProfile={phase.profile}
         onProfileChange={(profile) => saveProfile(phase.user, profile)}
         onSignOut={logout}
+        content={phase.content}
       />
     </>
   );
@@ -167,7 +239,35 @@ function GoogleLogo() {
   );
 }
 
-function LoginScreen({ onLogin, busy, error }: { onLogin: () => void; busy: boolean; error?: string }) {
+const roleOptions: { id: Role; label: string; helper: string; icon: string }[] = [
+  {
+    id: "student",
+    label: "Estudiante",
+    helper: "Tu perfil, match, servicios y mapa",
+    icon: "graduation",
+  },
+  {
+    id: "admin",
+    label: "Administrador",
+    helper: "Gestiona lugares, servicios y actividades",
+    icon: "shield",
+  },
+];
+
+function LoginScreen({
+  onLogin,
+  busy,
+  error,
+  role,
+  onRoleChange,
+}: {
+  onLogin: () => void;
+  busy: boolean;
+  error?: string;
+  role: Role;
+  onRoleChange: (role: Role) => void;
+}) {
+  const roleName = role === "admin" ? "administrador" : "estudiante";
   return (
     <main className="auth-screen">
       <section className="auth-card card" aria-labelledby="login-title">
@@ -181,17 +281,40 @@ function LoginScreen({ onLogin, busy, error }: { onLogin: () => void; busy: bool
         <p className="lead">
           Servicios, espacios y oportunidades de la Universidad Militar Nueva Granada, sede Calle 100.
         </p>
+        <fieldset className="role-picker">
+          <legend>¿Cómo quieres entrar?</legend>
+          <div className="role-options">
+            {roleOptions.map((option) => (
+              <label key={option.id} className={`role-option ${role === option.id ? "active" : ""}`}>
+                <input
+                  type="radio"
+                  name="login-role"
+                  value={option.id}
+                  checked={role === option.id}
+                  onChange={() => onRoleChange(option.id)}
+                />
+                <span className="role-icon" aria-hidden="true">
+                  <Icon name={option.icon} size={22} />
+                </span>
+                <strong>{option.label}</strong>
+                <small>{option.helper}</small>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button className="google-button" onClick={onLogin} disabled={busy}>
           <GoogleLogo />
           {busy
             ? "Abriendo Google…"
             : firebaseEnabled
-              ? "Continuar con tu cuenta institucional"
-              : "Entrar en modo demo"}
+              ? `Entrar como ${roleName}`
+              : `Entrar en modo demo como ${roleName}`}
         </button>
         <p className="auth-note">
           {firebaseEnabled
-            ? `Usa tu correo @${ALLOWED_DOMAIN}.`
+            ? role === "admin"
+              ? `Usa tu correo @${ALLOWED_DOMAIN} autorizado como administrador.`
+              : `Usa tu correo @${ALLOWED_DOMAIN}.`
             : "Firebase no está configurado: se usará un perfil de prueba guardado en este navegador."}
         </p>
         {error && (

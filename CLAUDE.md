@@ -7,11 +7,15 @@ en Firebase Hosting.
 
 ## Estructura
 - `src/App.tsx` – la app (Perfil, Match, Descubre, Explora). Recibe el usuario y el perfil por props.
-- `src/AuthGate.tsx` – login con Google, validación de dominio, onboarding de 3 pasos.
+- `src/AuthGate.tsx` – login con Google, elección de perfil (Estudiante / Administrador), validación de dominio y de permisos de admin, onboarding de 3 pasos (solo estudiantes).
 - `src/firebase.ts` – inicialización de Firebase desde variables `VITE_*`. Sin `.env` → **modo demo**.
 - `src/profileStore.ts` – lee/guarda el perfil en `users/{uid}` (Firestore) o en localStorage (demo).
-- `src/data.ts` – contenido de la universidad (lugares, servicios, programas, intereses, objetivos).
-- `firestore.rules` – cada usuario solo lee/escribe su propio documento y solo con correo verificado @unimilitar.edu.co.
+- `src/data.ts` – contenido original de la universidad (lugares, servicios, programas, intereses, objetivos).
+- `src/contentStore.ts` – contenido editable: lee/guarda cada sección en `content/{places|zones|services|activities|clubs|opportunities}` (Firestore) o localStorage (demo); si no existe, usa `data.ts`. También `checkIsAdmin` (`admins/{correo}`).
+- `src/AdminApp.tsx` – interfaz del administrador, separada de la del estudiante (sin onboarding ni perfil).
+- `src/AdminPage.tsx` – listado y formularios para editar el contenido.
+- `src/ui.tsx` – íconos y `PageTitle` compartidos.
+- `firestore.rules` – cada usuario solo lee/escribe su propio perfil; todos los estudiantes leen `content/*` y solo los admins (`admins/{correo}`) lo escriben. Todo con correo verificado @unimilitar.edu.co.
 - `firebase.json` – Hosting de `dist/` como SPA.
 
 ## Tarea: dejar el MVP funcionando y publicado
@@ -43,7 +47,11 @@ Hazlo paso a paso y confirma con el usuario antes de crear recursos en la nube.
      recargar y comprobar que el perfil se mantiene (documento en Firestore → `users/{uid}`).
    - Probar con un Gmail personal: debe rechazarlo con el mensaje de dominio.
 
-5. **Publicar**
+5. **Nombrar al primer administrador** (no se puede desde la app)
+   - Consola → Firestore → colección `admins` → documento con ID = correo en minúsculas → cualquier campo.
+   - En el inicio elegir "Administrador" y entrar con esa cuenta: debe abrir el panel. Con otra cuenta debe negar el acceso.
+
+6. **Publicar**
    - `npm run deploy` (build + hosting + reglas de Firestore).
    - Entregar al usuario la URL `https://<id>.web.app`.
 

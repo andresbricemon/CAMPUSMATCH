@@ -1,225 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  campusZones,
   categoryMeta,
-  discoverySections,
   needs,
-  places,
   profile,
   programs,
   recommendations,
   semesters,
-  services,
+  serviceTypes,
   type Category,
   type NeedId,
   type Noise,
 } from "./data";
 import campusMapImage from "./assets/campus-map.png";
-import { initialsFrom, type SessionUser, type StudentProfileState } from "./types";
+import { Icon, PageTitle, ThemeToggle } from "./ui";
+import {
+  initialsFrom,
+  type CampusContent,
+  type CampusZone,
+  type DiscoveryItem,
+  type Place,
+  type SessionUser,
+  type Service,
+  type StudentProfileState,
+} from "./types";
 
 type Section = "profile" | "match" | "discover" | "explore";
 type Screen = Section | "result";
-type IconName = string;
-
-const iconPaths: Record<string, React.ReactNode> = {
-  user: (
-    <>
-      <path d="M20 21a8 8 0 0 0-16 0" />
-      <circle cx="12" cy="7" r="4" />
-    </>
-  ),
-  sparkles: (
-    <>
-      <path d="m12 3-1.1 3.4A3 3 0 0 1 9 8.3L5.5 9.5 9 10.7a3 3 0 0 1 1.9 1.9L12 16l1.1-3.4a3 3 0 0 1 1.9-1.9l3.5-1.2L15 8.3a3 3 0 0 1-1.9-1.9Z" />
-      <path d="m5 3 .5 1.5L7 5l-1.5.5L5 7l-.5-1.5L3 5l1.5-.5Z" />
-      <path d="m19 17 .6 1.4L21 19l-1.4.6L19 21l-.6-1.4L17 19l1.4-.6Z" />
-    </>
-  ),
-  compass: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m15.5 8.5-2 5-5 2 2-5Z" />
-    </>
-  ),
-  map: (
-    <>
-      <path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z" />
-      <path d="M8 3v15M16 6v15" />
-    </>
-  ),
-  sun: (
-    <>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-    </>
-  ),
-  moon: <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" />,
-  utensils: (
-    <>
-      <path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18M17 3c3 2 3 7 0 9" />
-    </>
-  ),
-  book: (
-    <>
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5Z" />
-      <path d="M4 6.5v13M8 7h8" />
-    </>
-  ),
-  heart: (
-    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
-  ),
-  users: (
-    <>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
-    </>
-  ),
-  briefcase: (
-    <>
-      <rect x="3" y="7" width="18" height="13" rx="2" />
-      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" />
-    </>
-  ),
-  activity: <polyline points="3 12 7 12 10 5 14 19 17 12 21 12" />,
-  arrowLeft: (
-    <>
-      <path d="m15 18-6-6 6-6" />
-      <path d="M9 12h11" />
-    </>
-  ),
-  arrowRight: (
-    <>
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
-    </>
-  ),
-  check: <polyline points="20 6 9 17 4 12" />,
-  checkCircle: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <polyline points="8 12 11 15 16 9" />
-    </>
-  ),
-  edit: (
-    <>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
-    </>
-  ),
-  graduation: (
-    <>
-      <path d="m2 10 10-5 10 5-10 5Z" />
-      <path d="M6 12v5c3 2 9 2 12 0v-5" />
-    </>
-  ),
-  pin: (
-    <>
-      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
-      <circle cx="12" cy="10" r="2.5" />
-    </>
-  ),
-  volume: (
-    <>
-      <path d="M11 5 6 9H2v6h4l5 4Z" />
-      <path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12" />
-    </>
-  ),
-  clock: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </>
-  ),
-  calendar: (
-    <>
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M16 3v4M8 3v4M3 10h18" />
-    </>
-  ),
-  plus: (
-    <>
-      <path d="M12 5v14M5 12h14" />
-    </>
-  ),
-  minus: <path d="M5 12h14" />,
-  sliders: (
-    <>
-      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
-      <path d="M1 14h6M9 8h6M17 16h6" />
-    </>
-  ),
-  x: (
-    <>
-      <path d="m6 6 12 12M18 6 6 18" />
-    </>
-  ),
-  navigation: (
-    <>
-      <polygon points="3 11 22 2 13 21 11 13 3 11" />
-      <path d="m11 13 11-11" />
-    </>
-  ),
-  image: (
-    <>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <circle cx="8.5" cy="9" r="1.5" />
-      <path d="m21 15-5-5L5 20" />
-    </>
-  ),
-  camera: (
-    <>
-      <path d="M14.5 5 13 3h-2L9.5 5H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z" />
-      <circle cx="12" cy="12.5" r="4" />
-    </>
-  ),
-  info: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v5M12 8h.01" />
-    </>
-  ),
-  car: (
-    <>
-      <path d="m5 17-1 2v2M19 17l1 2v2M5 17h14l-1.5-6h-11Z" />
-      <path d="M7 11 9 7h6l2 4M7 17h.01M17 17h.01" />
-    </>
-  ),
-  leaf: (
-    <>
-      <path d="M20 4C11 4 5 8 5 14c0 3 2 5 5 5 6 0 10-6 10-15Z" />
-      <path d="M4 21c3-6 7-9 12-12" />
-    </>
-  ),
-};
-
-function Icon({
-  name,
-  size = 22,
-  className = "",
-}: {
-  name: IconName;
-  size?: number;
-  className?: string;
-}) {
-  return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {iconPaths[name]}
-    </svg>
-  );
-}
-
 const navItems: { id: Section; label: string; icon: string }[] = [
   { id: "profile", label: "Perfil", icon: "user" },
   { id: "match", label: "Match", icon: "sparkles" },
@@ -227,40 +33,7 @@ const navItems: { id: Section; label: string; icon: string }[] = [
   { id: "explore", label: "Explora", icon: "map" },
 ];
 
-function ThemeToggle({ dark, onChange }: { dark: boolean; onChange: () => void }) {
-  return (
-    <button
-      className="theme-toggle"
-      onClick={onChange}
-      aria-label={`Cambiar a tema ${dark ? "claro" : "oscuro"}`}
-      title={`Tema ${dark ? "claro" : "oscuro"}`}
-    >
-      <Icon name={dark ? "moon" : "sun"} size={18} />
-      <span className="hidden sm:inline">{dark ? "Oscuro" : "Claro"}</span>
-      <span className="toggle-track" aria-hidden="true">
-        <span className="toggle-thumb" />
-      </span>
-    </button>
-  );
-}
 
-function PageTitle({
-  eyebrow,
-  title,
-  text,
-}: {
-  eyebrow?: string;
-  title: React.ReactNode;
-  text?: string;
-}) {
-  return (
-    <header className="page-title stagger">
-      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <h1>{title}</h1>
-      {text && <p className="lead">{text}</p>}
-    </header>
-  );
-}
 
 function BackButton({ onClick, label = "Volver" }: { onClick: () => void; label?: string }) {
   return (
@@ -533,15 +306,31 @@ function MatchPage({ choose }: { choose: (id: NeedId) => void }) {
 
 function ResultPage({
   need,
+  places,
   onBack,
   onRoute,
 }: {
   need: NeedId;
+  places: Place[];
   onBack: () => void;
   onRoute: (id: string) => void;
 }) {
-  const place = places.find((item) => item.id === recommendations[need])!;
   const needLabel = needs.find((item) => item.id === need)?.label;
+  // Si un administrador eliminó el lugar recomendado, se usa el de mejor compatibilidad.
+  const place =
+    places.find((item) => item.id === recommendations[need]) ??
+    [...places].sort((a, b) => b.compatibility - a.compatibility)[0];
+  if (!place)
+    return (
+      <div className="page result-page">
+        <BackButton onClick={onBack} />
+        <div className="empty card">
+          <Icon name="compass" />
+          <h3>Aún no hay lugares para recomendar</h3>
+          <p>Vuelve pronto: estamos actualizando el mapa del campus.</p>
+        </div>
+      </div>
+    );
   return (
     <div className="page result-page">
       <BackButton onClick={onBack} />
@@ -617,7 +406,7 @@ function Accordion({
   section,
   selectedTags,
 }: {
-  section: (typeof discoverySections)[number];
+  section: { id: string; title: string; items: DiscoveryItem[] };
   selectedTags: ReadonlySet<string>;
 }) {
   const [open, setOpen] = useState(false);
@@ -642,8 +431,8 @@ function Accordion({
         className={`accordion-content ${open ? "open" : ""}`}
         hidden={!open}
       >
-        {section.items.map((item) => (
-          <div className="discovery-item" key={item.title}>
+        {section.items.map((item, index) => (
+          <div className="discovery-item" key={`${index}-${item.title}`}>
             <span className="item-dot" />
             <div>
               <div className="item-title-row">
@@ -653,7 +442,7 @@ function Accordion({
                 )}
               </div>
               {item.meta && <p>{item.meta}</p>}
-              {"url" in item && (
+              {item.url && (
                 <a className="more-info-link" href={item.url} target="_blank" rel="noreferrer">
                   Más info
                   <Icon name="arrowRight" size={15} />
@@ -674,10 +463,14 @@ function DiscoverPage({
   openFilters,
   filters,
   selectedTags,
+  services,
+  sections,
 }: {
   openFilters: () => void;
   filters: DiscoverFilters;
   selectedTags: ReadonlySet<string>;
+  services: Service[];
+  sections: { id: string; title: string; items: DiscoveryItem[] }[];
 }) {
   const filtered = services.filter(
     (service) =>
@@ -719,7 +512,7 @@ function DiscoverPage({
           {filtered.map((service, index) => (
             <article
               className="service-card card stagger"
-              key={service.title}
+              key={`${index}-${service.title}`}
               style={{ "--delay": `${index * 45}ms` } as React.CSSProperties}
             >
               <span className="service-icon">
@@ -747,7 +540,7 @@ function DiscoverPage({
                   <span />
                   {service.available ? "Disponible ahora" : "Consulta el horario"}
                 </span>
-                {"url" in service && (
+                {service.url && (
                   <a className="more-info-link" href={service.url} target="_blank" rel="noreferrer">
                     Más info
                     <Icon name="arrowRight" size={15} />
@@ -766,7 +559,7 @@ function DiscoverPage({
         )}
       </section>
       <div className="accordion-stack">
-        {discoverySections.map((section) => (
+        {sections.map((section) => (
           <Accordion key={section.id} section={section} selectedTags={selectedTags} />
         ))}
       </div>
@@ -779,11 +572,15 @@ function CampusMap({
   route,
   onSelect,
   visiblePlaces,
+  places,
+  campusZones,
 }: {
   selected?: string;
   route?: boolean;
   onSelect: (id: string) => void;
-  visiblePlaces: (typeof places)[number][];
+  visiblePlaces: Place[];
+  places: Place[];
+  campusZones: CampusZone[];
 }) {
   const target = places.find((p) => p.id === selected);
   const selectedZone = campusZones.find((zone) => zone.id === selected);
@@ -998,8 +795,8 @@ function PlaceDetail({
   zone,
   routed,
 }: {
-  place?: (typeof places)[number];
-  zone?: (typeof campusZones)[number];
+  place?: Place;
+  zone?: CampusZone;
   routed: boolean;
 }) {
   if (zone)
@@ -1007,7 +804,7 @@ function PlaceDetail({
       <aside className="place-detail card">
         <div className="section-row">
           <span className={`place-icon cat-${zone.category.toLowerCase()}`}>
-            <Icon name={"icon" in zone ? zone.icon : categoryMeta[zone.category].icon} />
+            <Icon name={zone.icon ?? categoryMeta[zone.category]?.icon ?? "pin"} />
           </span>
           <span className="category-pill">Zona del campus</span>
         </div>
@@ -1019,7 +816,7 @@ function PlaceDetail({
         <div className="pending-content">
           <Icon name="info" />
           <div>
-            {"info" in zone ? (
+            {zone.info ? (
               <>
                 <strong>Información del lugar</strong>
                 <p>{zone.info}</p>
@@ -1032,7 +829,7 @@ function PlaceDetail({
             )}
           </div>
         </div>
-        {"photo" in zone && (
+        {zone.photo && (
           <div className="gallery" aria-label={`Galería de ${zone.name}`}>
             <figure className="photo-real">
               <img src={zone.photo.src} alt={zone.photo.alt} />
@@ -1047,7 +844,9 @@ function PlaceDetail({
             ))}
           </div>
         )}
-        {"instagram" in zone && <InstagramButton urls={zone.instagram} placeName={zone.name} />}
+        {zone.instagram?.length ? (
+          <InstagramButton urls={zone.instagram} placeName={zone.name} />
+        ) : null}
       </aside>
     );
   if (!place)
@@ -1060,7 +859,7 @@ function PlaceDetail({
         <p>Toca un marcador del mapa para conocer sus detalles.</p>
       </aside>
     );
-  const placePhoto = "photo" in place ? place.photo : undefined;
+  const placePhoto = place.photo;
   return (
     <aside className="place-detail card">
       {routed && (
@@ -1119,7 +918,9 @@ function PlaceDetail({
           </div>
         ))}
       </div>
-      {"instagram" in place && <InstagramButton urls={place.instagram} placeName={place.name} />}
+      {place.instagram?.length ? (
+        <InstagramButton urls={place.instagram} placeName={place.name} />
+      ) : null}
     </aside>
   );
 }
@@ -1143,12 +944,16 @@ function ExplorePage({
   onSelect,
   openFilters,
   filters,
+  places,
+  campusZones,
 }: {
   selected?: string;
   routed: boolean;
   onSelect: (id: string) => void;
   openFilters: () => void;
   filters: ExploreFilters;
+  places: Place[];
+  campusZones: CampusZone[];
 }) {
   const visible = places.filter(
     (p) =>
@@ -1198,7 +1003,9 @@ function ExplorePage({
           selected={selected}
           route={routed}
           onSelect={onSelect}
-          visiblePlaces={[...visible]}
+          visiblePlaces={visible}
+          places={places}
+          campusZones={campusZones}
         />
         <PlaceDetail place={place} zone={zone} routed={routed} />
       </div>
@@ -1292,9 +1099,30 @@ type AppProps = {
   initialProfile: StudentProfileState;
   onProfileChange: (profile: StudentProfileState) => Promise<void> | void;
   onSignOut: () => void;
+  /** Contenido del campus (el original o el editado por los administradores). */
+  content: CampusContent;
 };
 
-function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
+function App({
+  user,
+  initialProfile,
+  onProfileChange,
+  onSignOut,
+  content,
+}: AppProps) {
+  const { places, zones: campusZones, services } = content;
+  const discoverySections = useMemo(
+    () => [
+      { id: "activities", title: "Actividades", items: content.activities },
+      { id: "clubs", title: "Clubes", items: content.clubs },
+      { id: "opportunities", title: "Oportunidades", items: content.opportunities },
+    ],
+    [content.activities, content.clubs, content.opportunities],
+  );
+  const serviceFaculties = useMemo(
+    () => [...new Set(services.map((service) => service.faculty).filter((f) => f !== "Todas"))],
+    [services],
+  );
   const [screen, setScreen] = useState<Screen>("match");
   const [history, setHistory] = useState<Screen[]>([]);
   const [need, setNeed] = useState<NeedId>("study");
@@ -1356,7 +1184,7 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
           (discoverFilters.type === "Todos" || s.type === discoverFilters.type) &&
           (!discoverFilters.available || s.available),
       ).length,
-    [discoverFilters],
+    [discoverFilters, services],
   );
   const exploreCount = useMemo(
     () =>
@@ -1367,7 +1195,7 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
           (exploreFilters.schedule === "Cualquiera" || p.openNow) &&
           (exploreFilters.noise === "Todos" || p.noise === exploreFilters.noise),
       ).length,
-    [exploreFilters],
+    [exploreFilters, places],
   );
 
   const nav = (
@@ -1427,7 +1255,11 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
         </header>
         <main id="main-content">
           {screen === "profile" && (
-            <ProfilePage user={user} value={studentProfile} onSave={saveStudentProfile} />
+            <ProfilePage
+              user={user}
+              value={studentProfile}
+              onSave={saveStudentProfile}
+            />
           )}
           {screen === "match" && (
             <MatchPage
@@ -1440,6 +1272,7 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
           {screen === "result" && (
             <ResultPage
               need={need}
+              places={places}
               onBack={goBack}
               onRoute={(id) => {
                 setSelectedPlace(id);
@@ -1453,6 +1286,8 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
               filters={discoverFilters}
               openFilters={() => setModal("discover")}
               selectedTags={selectedTags}
+              services={services}
+              sections={discoverySections}
             />
           )}
           {screen === "explore" && (
@@ -1465,6 +1300,8 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
               }}
               filters={exploreFilters}
               openFilters={() => setModal("explore")}
+              places={places}
+              campusZones={campusZones}
             />
           )}
         </main>
@@ -1484,6 +1321,9 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
               onChange={(e) => setDiscoverFilters({ ...discoverFilters, faculty: e.target.value })}
             >
               <option>Todas</option>
+              {serviceFaculties.map((faculty) => (
+                <option key={faculty}>{faculty}</option>
+              ))}
             </select>
           </label>
           <label>
@@ -1493,11 +1333,9 @@ function App({ user, initialProfile, onProfileChange, onSignOut }: AppProps) {
               onChange={(e) => setDiscoverFilters({ ...discoverFilters, type: e.target.value })}
             >
               <option>Todos</option>
-              <option>Bienestar</option>
-              <option>Salud</option>
-              <option>Académico</option>
-              <option>Profesional</option>
-              <option>Movilidad</option>
+              {serviceTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
             </select>
           </label>
           <label className="switch-field">

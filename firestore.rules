@@ -1,16 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada estudiante solo puede leer y escribir SU propio perfil,
-    // y solo si inició sesión con una cuenta verificada @unimilitar.edu.co.
+    // Solo cuentas verificadas @unimilitar.edu.co.
     function isUmng() {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email.matches('.*@unimilitar[.]edu[.]co$');
     }
 
+    // Administrador = existe admins/{correo en minúsculas}. Se crea a mano en la consola.
+    function isAdmin() {
+      return isUmng()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+    }
+
+    // Cada estudiante solo puede leer y escribir SU propio perfil.
     match /users/{uid} {
       allow read, write: if isUmng() && request.auth.uid == uid;
+    }
+
+    // Cada usuario puede consultar si él mismo es administrador. Nadie lo puede cambiar desde la app.
+    match /admins/{email} {
+      allow read: if isUmng() && request.auth.token.email.lower() == email;
+      allow write: if false;
+    }
+
+    // Contenido del campus (lugares, zonas, servicios, actividades, clubes, oportunidades):
+    // lo leen todos los estudiantes y solo lo editan los administradores.
+    match /content/{section} {
+      allow read: if isUmng();
+      allow create, update: if isAdmin()
+        && section in ['places', 'zones', 'services', 'activities', 'clubs', 'opportunities']
+        && request.resource.data.items is list;
+      allow delete: if isAdmin();
     }
 
     // Todo lo demás queda cerrado.
