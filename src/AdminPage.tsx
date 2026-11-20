@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import campusMapImage from "./assets/campus-map.png";
-import { categoryMeta, knownTags, programs, serviceTypes } from "./data";
+import { categoryMeta, knownTags, needs, programs, serviceTypes } from "./data";
+import { loadMetrics, type Metrics } from "./metricsStore";
 import { distanciaDesdeEntrada, ENTRADA_CRA_11, textoDistancia } from "./distance";
 import { firebaseEnabled } from "./firebase";
 import { Icon, PageTitle } from "./ui";
-import type { CampusContent, ContentKey } from "./types";
+import type { CampusContent, ContentKey, Place } from "./types";
 
 type Item = Record<string, unknown>;
 
@@ -605,6 +606,163 @@ function EditorModal({
   );
 }
 
+function RankingList({
+  title,
+  eyebrow,
+  rows,
+}: {
+  title: string;
+  eyebrow: string;
+  rows: { label: string; count: number }[];
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.count));
+  return (
+    <section className="card metrics-list">
+      <p className="mini-label">{eyebrow}</p>
+      <h2>{title}</h2>
+      <ol>
+        {rows.map((row, index) => (
+          <li key={`${index}-${row.label}`}>
+            <span className="metrics-rank" aria-hidden="true">
+              {index + 1}
+            </span>
+            <div className="metrics-row-text">
+              <div className="item-title-row">
+                <strong>{row.label}</strong>
+                <span className="personal-badge">
+                  {row.count} {row.count === 1 ? "vez" : "veces"}
+                </span>
+              </div>
+              <span className="metrics-bar" aria-hidden="true">
+                <span style={{ width: `${(row.count / max) * 100}%` }} />
+              </span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function MetricsPanel({ places }: { places: Place[] }) {
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
+  const refresh = async () => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      setMetrics(await loadMetrics());
+    } catch (err) {
+      console.error(err);
+      setError(
+        "No se pudieron cargar las métricas. Revisa tu conexión y que las reglas de Firestore estén desplegadas.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const placeName = (id: string) =>
+    places.find((place) => place.id === id)?.name ?? "Lugar eliminado del mapa";
+  const needLabel = (id: string) => needs.find((need) => need.id === id)?.label ?? id;
+
+  return (
+    <section aria-labelledby="metrics-title" aria-busy={loading}>
+      <div className="filter-bar admin-toolbar">
+        <h2 id="metrics-title" className="metrics-heading">
+          Métricas de uso
+        </h2>
+        <button className="button secondary" onClick={() => void refresh()} disabled={loading}>
+          <Icon name="rotate" size={18} />
+          {loading ? "Cargando…" : "Actualizar"}
+        </button>
+      </div>
+      {error && (
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!metrics && loading && (
+        <p className="muted" role="status">
+          Cargando métricas…
+        </p>
+      )}
+      {metrics && (
+        <>
+          <div className="metrics-grid">
+            {[
+              {
+                label: "Usuarios registrados",
+                value: metrics.users ?? "—",
+                icon: "users",
+                hint: metrics.users === null ? "No se pudo contar" : "Con perfil creado",
+              },
+              {
+                label: "Matches últimos 7 días",
+                value: metrics.matchesLast7Days,
+                icon: "calendar",
+                hint: "Resultados obtenidos en Match",
+              },
+              {
+                label: "Matches totales",
+                value: metrics.totalMatches,
+                icon: "sparkles",
+                hint: "Desde que se empezó a medir",
+              },
+            ].map((stat) => (
+              <article className="card metrics-card" key={stat.label}>
+                <span className="icon-box">
+                  <Icon name={stat.icon} />
+                </span>
+                <div>
+                  <p className="mini-label">{stat.label}</p>
+                  <strong className="metrics-value">{stat.value}</strong>
+                  <small>{stat.hint}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+          {metrics.totalMatches === 0 ? (
+            <div className="empty card">
+              <Icon name="sparkles" />
+              <h3>Todavía no hay matches</h3>
+              <p>
+                Cuando los estudiantes usen “¿Qué necesitas ahora?”, aquí verás los lugares más
+                recomendados y las necesidades más pedidas.
+              </p>
+            </div>
+          ) : (
+            <div className="metrics-lists">
+              <RankingList
+                eyebrow="Top 5"
+                title="Lugares más recomendados"
+                rows={metrics.topPlaces.map((row) => ({
+                  label: placeName(row.placeId),
+                  count: row.count,
+                }))}
+              />
+              <RankingList
+                eyebrow="Lo que buscan"
+                title="Necesidades más pedidas"
+                rows={metrics.topNeeds.map((row) => ({
+                  label: needLabel(row.need),
+                  count: row.count,
+                }))}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function AdminPage({
   content,
   onSave,
@@ -614,7 +772,8 @@ export default function AdminPage({
   onSave: <K extends ContentKey>(key: K, items: CampusContent[K]) => Promise<void>;
   onReset: (key: ContentKey) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<ContentKey>("places");
+  const [view, setView] = useState<ContentKey | "metrics">("places");
+  const tab: ContentKey = view === "metrics" ? "places" : view;
   const [editing, setEditing] = useState<{ index: number | null; draft: Item } | null>(null);
   const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -715,10 +874,10 @@ export default function AdminPage({
         {sections.map((section) => (
           <button
             key={section.key}
-            className={`chip ${tab === section.key ? "active" : ""}`}
-            aria-pressed={tab === section.key}
+            className={`chip ${view === section.key ? "active" : ""}`}
+            aria-pressed={view === section.key}
             onClick={() => {
-              setTab(section.key);
+              setView(section.key);
               setStatus(null);
             }}
           >
@@ -726,7 +885,22 @@ export default function AdminPage({
             <span className="admin-count">{(content[section.key] as unknown[]).length}</span>
           </button>
         ))}
+        <button
+          className={`chip ${view === "metrics" ? "active" : ""}`}
+          aria-pressed={view === "metrics"}
+          onClick={() => {
+            setView("metrics");
+            setStatus(null);
+          }}
+        >
+          <Icon name="activity" size={16} />
+          Métricas
+        </button>
       </div>
+      {view === "metrics" ? (
+        <MetricsPanel places={content.places} />
+      ) : (
+      <>
       <div className="filter-bar admin-toolbar">
         <p>
           <strong>{items.length}</strong> {config.label.toLowerCase()}
@@ -803,6 +977,8 @@ export default function AdminPage({
           <h3>No hay elementos</h3>
           <p>Usa “Añadir {config.singular}” para crear el primero.</p>
         </div>
+      )}
+      </>
       )}
       {editing && (
         <EditorModal

@@ -13,6 +13,7 @@ import {
 } from "./data";
 import campusMapImage from "./assets/campus-map.png";
 import { textoDistancia, urlRuta } from "./distance";
+import { logMatch } from "./metricsStore";
 import { Icon, PageTitle, ThemeToggle } from "./ui";
 import {
   initialsFrom,
@@ -325,6 +326,14 @@ function RouteLink({ point, onClick }: { point: { x: number; y: number }; onClic
   );
 }
 
+/** Lugar recomendado para una necesidad. Si un admin eliminó el previsto, usa el de mejor compatibilidad. */
+function recommendedPlace(need: NeedId, places: Place[]): Place | undefined {
+  return (
+    places.find((item) => item.id === recommendations[need]) ??
+    [...places].sort((a, b) => b.compatibility - a.compatibility)[0]
+  );
+}
+
 function ResultPage({
   need,
   places,
@@ -338,9 +347,7 @@ function ResultPage({
 }) {
   const needLabel = needs.find((item) => item.id === need)?.label;
   // Si un administrador eliminó el lugar recomendado, se usa el de mejor compatibilidad.
-  const place =
-    places.find((item) => item.id === recommendations[need]) ??
-    [...places].sort((a, b) => b.compatibility - a.compatibility)[0];
+  const place = recommendedPlace(need, places);
   if (!place)
     return (
       <div className="page result-page">
@@ -1293,6 +1300,8 @@ function App({
               choose={(id) => {
                 setNeed(id);
                 navigate("result");
+                const match = recommendedPlace(id, places);
+                if (match) void logMatch(user, id, match.id);
               }}
             />
           )}

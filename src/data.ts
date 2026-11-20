@@ -358,7 +358,7 @@ export const places: PlaceData[] = [
 export const recommendations: Record<NeedId, string> = {
   hunger: "cafeteria-central",
   study: "biblioteca-norte",
-  stress: "bienestar",
+  stress: "coase-bienestar",
   social: "plazoleta",
   internship: "biblioteca-norte",
   sport: "cancha-multiple",

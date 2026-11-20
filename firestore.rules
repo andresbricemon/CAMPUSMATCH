@@ -14,9 +14,22 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
     }
 
-    // Cada estudiante solo puede leer y escribir SU propio perfil.
+    // Cada estudiante solo puede leer y escribir SU propio perfil. Los admins pueden leerlos todos (métricas).
     match /users/{uid} {
-      allow read, write: if isUmng() && request.auth.uid == uid;
+      allow read: if isUmng() && (request.auth.uid == uid || isAdmin());
+      allow write: if isUmng() && request.auth.uid == uid;
+    }
+
+    // Registro de resultados de Match: cada usuario crea solo los suyos; solo los admins leen.
+    match /matches/{matchId} {
+      allow create: if isUmng()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'need', 'placeId', 'createdAt'])
+        && request.resource.data.need is string
+        && request.resource.data.placeId is string
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // Cada usuario puede consultar si él mismo es administrador. Nadie lo puede cambiar desde la app.
