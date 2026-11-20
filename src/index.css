@@ -1959,3 +1959,16 @@
   font-size: 13px;
   font-weight: 500;
 }
+.route-action {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.place-detail .route-action {
+  margin-top: 14px;
+}
+.route-action small {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}

@@ -12,7 +12,7 @@ import {
   type Noise,
 } from "./data";
 import campusMapImage from "./assets/campus-map.png";
-import { textoDistancia } from "./distance";
+import { textoDistancia, urlRuta } from "./distance";
 import { Icon, PageTitle, ThemeToggle } from "./ui";
 import {
   initialsFrom,
@@ -305,6 +305,26 @@ function MatchPage({ choose }: { choose: (id: NeedId) => void }) {
   );
 }
 
+/** "Llévame allí": ruta a pie en Google Maps desde la entrada Cra. 11 (abre la app en el celular). */
+function RouteLink({ point, onClick }: { point: { x: number; y: number }; onClick?: () => void }) {
+  return (
+    <div className="route-action">
+      <a
+        className="button primary wide"
+        href={urlRuta(point)}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={onClick}
+      >
+        <Icon name="navigation" size={19} />
+        Llévame allí
+        <span className="sr-only"> (abre Google Maps en una pestaña nueva)</span>
+      </a>
+      <small>Ruta aproximada desde la entrada Cra. 11</small>
+    </div>
+  );
+}
+
 function ResultPage({
   need,
   places,
@@ -390,10 +410,8 @@ function ResultPage({
           </div>
         </div>
         <div className="result-actions">
-          <button className="button primary wide" onClick={() => onRoute(place.id)}>
-            <Icon name="navigation" size={19} />
-            Llévame allí
-          </button>
+          {/* Abre Google Maps y, en la app, deja el lugar marcado en Explora. */}
+          <RouteLink point={place} onClick={() => onRoute(place.id)} />
           <button className="button secondary wide" onClick={onBack}>
             Elegir otra necesidad
           </button>
@@ -845,6 +863,7 @@ function PlaceDetail({
             ))}
           </div>
         )}
+        <RouteLink point={{ x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }} />
         {zone.instagram?.length ? (
           <InstagramButton urls={zone.instagram} placeName={zone.name} />
         ) : null}
@@ -920,6 +939,7 @@ function PlaceDetail({
           </div>
         ))}
       </div>
+      <RouteLink point={place} />
       {place.instagram?.length ? (
         <InstagramButton urls={place.instagram} placeName={place.name} />
       ) : null}
