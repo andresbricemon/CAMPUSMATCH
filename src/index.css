@@ -1939,3 +1939,23 @@
     grid-template-columns: 1fr;
   }
 }
+.admin-entrance {
+  position: absolute;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-text);
+  pointer-events: none;
+}
+.admin-distance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+}

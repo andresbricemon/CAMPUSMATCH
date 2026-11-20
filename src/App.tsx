@@ -12,6 +12,7 @@ import {
   type Noise,
 } from "./data";
 import campusMapImage from "./assets/campus-map.png";
+import { textoDistancia } from "./distance";
 import { Icon, PageTitle, ThemeToggle } from "./ui";
 import {
   initialsFrom,
@@ -355,7 +356,7 @@ function ResultPage({
         <div className="place-stats">
           <span>
             <Icon name="pin" size={18} />
-            <strong>{place.distance} m</strong>
+            <strong>{textoDistancia(place.distance)}</strong>
             <small>Distancia</small>
           </span>
           <span>
@@ -885,7 +886,8 @@ function PlaceDetail({
       </p>
       <div className="detail-meta">
         <span>
-          <Icon name="pin" size={17} />A {place.distance} m
+          <Icon name="pin" size={17} />
+          {textoDistancia(place.distance)}
         </span>
         <span>
           <Icon name="volume" size={17} />
@@ -925,6 +927,11 @@ function PlaceDetail({
   );
 }
 
+/** Rango del filtro de distancia (metros desde la entrada Cra. 11). */
+const DISTANCIA_MIN = 30;
+const DISTANCIA_MAX = 200;
+const DISTANCIA_PASO = 10;
+
 type ExploreFilters = {
   category: "Todas" | Category;
   distance: number;
@@ -933,7 +940,7 @@ type ExploreFilters = {
 };
 const exploreDefault: ExploreFilters = {
   category: "Todas",
-  distance: 1000,
+  distance: DISTANCIA_MAX,
   schedule: "Cualquiera",
   noise: "Todos",
 };
@@ -1378,12 +1385,12 @@ function App({
             </select>
           </label>
           <label>
-            Distancia máxima <strong>{exploreFilters.distance} m</strong>
+            Distancia máxima desde la entrada Cra. 11 <strong>{exploreFilters.distance} m</strong>
             <input
               type="range"
-              min="100"
-              max="1000"
-              step="50"
+              min={DISTANCIA_MIN}
+              max={DISTANCIA_MAX}
+              step={DISTANCIA_PASO}
               value={exploreFilters.distance}
               onChange={(e) =>
                 setExploreFilters({ ...exploreFilters, distance: Number(e.target.value) })

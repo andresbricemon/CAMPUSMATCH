@@ -3,7 +3,7 @@ import espacioBienestarPhoto from "./assets/espacio-bienestar-bloque-b.png";
 import gimnasioPhoto from "./assets/gimnasio-calle100.png";
 import plazaCervantesPhoto from "./assets/plaza-cervantes.png";
 
-import type { CampusZone, Category, DiscoveryItem, Noise, Place, Service } from "./types";
+import type { CampusZone, Category, DiscoveryItem, Noise, PlaceData, Service } from "./types";
 
 export type { Category, Noise };
 export type NeedId = "hunger" | "study" | "stress" | "social" | "internship" | "sport";
@@ -105,14 +105,13 @@ export const needs: { id: NeedId; label: string; helper: string; icon: string }[
   { id: "sport", label: "Deporte", helper: "Moverme y recargar energía", icon: "activity" },
 ];
 
-export const places: Place[] = [
+export const places: PlaceData[] = [
   {
     id: "biblioteca-norte",
     name: "Biblioteca General",
     category: "Estudio" as Category,
     x: 53.3,
     y: 15.8,
-    distance: 180,
     noise: "Silencioso" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -129,7 +128,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 54,
     y: 78.5,
-    distance: 240,
     noise: "Activo" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -144,7 +142,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 58.5,
     y: 78.5,
-    distance: 260,
     noise: "Activo" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -159,7 +156,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 63,
     y: 78.5,
-    distance: 280,
     noise: "Activo" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -174,7 +170,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 60.5,
     y: 36,
-    distance: 310,
     noise: "Moderado" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -189,7 +184,6 @@ export const places: Place[] = [
     category: "Salud" as Category,
     x: 61.6,
     y: 26,
-    distance: 330,
     noise: "Silencioso" as Noise,
     schedule: "Lun–Vie · 8:00 a. m.–5:00 p. m. (atención general)",
     openNow: true,
@@ -206,7 +200,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 32.5,
     y: 79,
-    distance: 520,
     noise: "Moderado" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -221,7 +214,6 @@ export const places: Place[] = [
     category: "Alimentación" as Category,
     x: 76.3,
     y: 48.5,
-    distance: 570,
     noise: "Moderado" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -236,7 +228,6 @@ export const places: Place[] = [
     category: "Salud" as Category,
     x: 47.7,
     y: 22.5,
-    distance: 420,
     noise: "Silencioso" as Noise,
     schedule: "[POR VERIFICAR] Lun–Vie 6:00 a. m.–10:00 p. m. · Sáb 7:00 a. m.–2:00 p. m.",
     openNow: true,
@@ -252,7 +243,6 @@ export const places: Place[] = [
     category: "Estudio" as Category,
     x: 53.3,
     y: 34.5,
-    distance: 230,
     noise: "Silencioso" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -269,7 +259,6 @@ export const places: Place[] = [
     category: "Estudio" as Category,
     x: 53.5,
     y: 55,
-    distance: 0,
     noise: "Moderado" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: false,
@@ -291,7 +280,6 @@ export const places: Place[] = [
     category: "Deporte" as Category,
     x: 29.7,
     y: 64.3,
-    distance: 650,
     noise: "Activo" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: false,
@@ -308,7 +296,6 @@ export const places: Place[] = [
     category: "Deporte" as Category,
     x: 29,
     y: 21,
-    distance: 390,
     noise: "Activo" as Noise,
     schedule: "[POR VERIFICAR] Horario",
     openNow: true,
@@ -331,7 +318,6 @@ export const places: Place[] = [
     category: "Eventos" as Category,
     x: 32.9,
     y: 31.2,
-    distance: 360,
     noise: "Moderado" as Noise,
     schedule: "Según programación",
     openNow: true,
@@ -357,7 +343,6 @@ export const places: Place[] = [
     category: "Estudio" as Category,
     x: 22,
     y: 85,
-    distance: 0,
     noise: "Silencioso" as Noise,
     schedule:
       "Lun–Vie 6:00 a. m.–10:00 p. m. · Sáb 7:00 a. m.–5:00 p. m. · Dom 7:00 a. m.–1:00 p. m. (horario general de espacios)",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminPage from "./AdminPage";
+import { withComputedDistances } from "./contentStore";
 import { Icon, ThemeToggle } from "./ui";
 import type { CampusContent, ContentKey, SessionUser } from "./types";
 
@@ -29,8 +30,9 @@ export default function AdminApp({
   }, [dark]);
 
   const saveContent = async <K extends ContentKey>(key: K, items: CampusContent[K]) => {
-    await onContentChange(key, items);
-    setContent((current) => ({ ...current, [key]: items }));
+    const next = withComputedDistances(key, items);
+    await onContentChange(key, next);
+    setContent((current) => ({ ...current, [key]: next }));
   };
   const resetContent = async (key: ContentKey) => {
     setContent(await onContentReset(key));

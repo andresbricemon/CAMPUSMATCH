@@ -29,6 +29,9 @@ export type Noise = "Silencioso" | "Moderado" | "Activo";
 
 export type Photo = { src: string; alt: string; credit: string };
 
+/** Marcador del mapa tal como se escribe en data.ts y se guarda en Firestore (sin distancia). */
+export type PlaceData = Omit<Place, "distance">;
+
 /** Marcador del mapa (lugar puntual). */
 export type Place = {
   id: string;
@@ -37,6 +40,7 @@ export type Place = {
   /** Posición en el mapa, en % del ancho/alto de la imagen. */
   x: number;
   y: number;
+  /** Metros desde la entrada Cra. 11. Siempre calculada con distanciaDesdeEntrada (src/distance.ts). */
   distance: number;
   noise: Noise;
   schedule: string;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import campusMapImage from "./assets/campus-map.png";
 import { categoryMeta, knownTags, programs, serviceTypes } from "./data";
+import { distanciaDesdeEntrada, ENTRADA_CRA_11, textoDistancia } from "./distance";
 import { firebaseEnabled } from "./firebase";
 import { Icon, PageTitle } from "./ui";
 import type { CampusContent, ContentKey } from "./types";
@@ -87,7 +88,8 @@ const sections: SectionConfig[] = [
     label: "Lugares del mapa",
     singular: "lugar",
     titleKey: "name",
-    subtitle: (item) => `${item.category} · ${item.schedule || "Sin horario"}`,
+    subtitle: (item) =>
+      `${item.category} · ${textoDistancia(distanciaDesdeEntrada(item as { x: number; y: number }))}`,
     canAdd: true,
     blank: () => ({
       id: "",
@@ -95,7 +97,6 @@ const sections: SectionConfig[] = [
       category: "Estudio",
       x: 50,
       y: 50,
-      distance: 0,
       noise: "Moderado",
       schedule: "",
       openNow: true,
@@ -113,14 +114,6 @@ const sections: SectionConfig[] = [
       { key: "schedule", label: "Horario", kind: "text" },
       { key: "openNow", label: "Abierto ahora", kind: "checkbox" },
       { key: "noise", label: "Nivel de ruido", kind: "select", options: ["Silencioso", "Moderado", "Activo"] },
-      {
-        key: "distance",
-        label: "Distancia (m)",
-        kind: "number",
-        min: 0,
-        max: 1000,
-        help: "Se usa en el filtro de distancia máxima (hasta 1000 m).",
-      },
       { key: "capacity", label: "Cupos", kind: "number", min: 0 },
       { key: "compatibility", label: "Compatibilidad (%)", kind: "number", min: 0, max: 100 },
       {
@@ -328,6 +321,12 @@ function PositionPicker({
       >
         <img className="campus-photo" src={campusMapImage} alt="" draggable={false} />
         <span
+          className="admin-entrance"
+          style={{ left: `${ENTRADA_CRA_11.x}%`, top: `${ENTRADA_CRA_11.y}%` }}
+          title="Entrada Cra. 11"
+          aria-hidden="true"
+        />
+        <span
           className={`map-marker cat-${category.toLowerCase()}`}
           style={{ left: `${x}%`, top: `${y}%` }}
           aria-hidden="true"
@@ -336,6 +335,10 @@ function PositionPicker({
         </span>
       </div>
       <p className="admin-help">Haz clic en el mapa para mover el marcador o escribe las coordenadas.</p>
+      <p className="admin-distance" aria-live="polite">
+        <Icon name="pin" size={16} />
+        Distancia calculada: <strong>{textoDistancia(distanciaDesdeEntrada({ x, y }))}</strong>
+      </p>
       <div className="admin-coords">
         <label>
           Horizontal (%)

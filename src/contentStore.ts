@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
 import { db, firebaseEnabled } from "./firebase";
 import { bundledPhotos, campusZones, discoverySections, places, services } from "./data";
+import { conDistancia } from "./distance";
 import {
   CONTENT_KEYS,
   type CampusContent,
@@ -17,7 +18,7 @@ function sectionItems(id: "activities" | "clubs" | "opportunities"): DiscoveryIt
 
 /** Contenido original incluido en el código (src/data.ts). */
 export const defaultContent: CampusContent = {
-  places,
+  places: places.map(conDistancia),
   zones: campusZones,
   services,
   activities: sectionItems("activities"),
@@ -69,10 +70,21 @@ export async function loadContent(): Promise<CampusContent> {
       // Si las reglas aún no están publicadas o no hay conexión, se usa el contenido original.
       console.error("No se pudo cargar el contenido editable:", error);
     }
-    return content;
+  } else {
+    Object.entries(readLocal()).forEach(([key, items]) => apply(key, items));
   }
-  Object.entries(readLocal()).forEach(([key, items]) => apply(key, items));
+  // La distancia nunca se toma de lo guardado: siempre se calcula desde la posición.
+  content.places = content.places.map(conDistancia);
   return content;
+}
+
+/** Recalcula la distancia de los lugares. Úsalo después de editar `places`. */
+export function withComputedDistances<K extends ContentKey>(
+  key: K,
+  items: CampusContent[K],
+): CampusContent[K] {
+  if (key !== "places") return items;
+  return (items as CampusContent["places"]).map(conDistancia) as CampusContent[K];
 }
 
 /** Guarda una sección completa del contenido. Solo los administradores tienen permiso. */
@@ -81,8 +93,13 @@ export async function saveContentSection<K extends ContentKey>(
   items: CampusContent[K],
   user: SessionUser,
 ): Promise<void> {
+  // La distancia es un dato calculado: no se guarda.
+  const stored =
+    key === "places"
+      ? (items as CampusContent["places"]).map(({ distance: _distance, ...place }) => place)
+      : items;
   // JSON elimina los campos `undefined`, que Firestore no acepta.
-  const clean = mapPhotoSrc(items, "encode");
+  const clean = mapPhotoSrc(stored, "encode");
   if (firebaseEnabled && db) {
     await setDoc(doc(db, "content", key), {
       items: clean,
